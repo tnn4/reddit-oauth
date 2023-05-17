@@ -6,6 +6,10 @@ use querystring::{querify,stringify};
 use nanoid::nanoid;
 use clap::Parser;
 
+use reqwest::Response;
+use url::{Url, ParseError};
+use serde::Deserialize;
+
 // ## querystring ##
 // type QueryParam<'a> = (&'a str, &'a str)
 // type QueryParams<'a> = Vec<QueryParam<'a>>;
@@ -145,28 +149,31 @@ async fn main(){
             GET request with your authorization url\n");
         return
     }
-
-    // Send GET request to auth-url
-    let res=client_ok.unwrap().get(&final_auth_url)
+    let client= client_ok.unwrap();
+    
+    
+    // ## GET request to auth-url ##
+    let res=client.get(&final_auth_url)
         .send() 
-        .await;
+        .await; // -> Result<Response, Error>
 
     // you're going to get a redirect URL
     // HTTP redirect code = 301
 
     // see: https://docs.rs/reqwest/latest/reqwest/struct.Response.html
-    let response_result = match res {
+    let response_ok : Result<Response,reqwest::Error> = match res {
         Ok(response) => {
-            println!("Got a response");
+            println!("Got a response.");
             Ok(response)
         },
         Err(err) => {
-            println!("[ERROR]: {}", err);
-            Err(err)
+            println!("[ERROR:RESPONSE]: {}", err);
+            panic!("Got an invalid response from the server. Cannot continue.")
         }
     };
 
-    let response=response_result.unwrap();
+
+    let response=response_ok.unwrap();
 
     let response_status = response.status();
     
@@ -177,31 +184,84 @@ async fn main(){
     // state= this value should be the same one as the initial request, you need to verify this
     
     // this should be the redirect URL reddit gives you
-    let response_url=response.url();
+    // it's not
+    let response_url=response.url().clone();
 
     // let test_string="http://localhost:7778/authorize_callback?state=AXNJ_k_QMVBAgT79KyUjw&code=YcIqKbQ72V9R3wXSXnGz9GV3i_EBQQ#_";
     
-    println!("response_status: {}", response_status.as_str());
-    println!("response_url: {}", response_url);
+    println!("[RESPONSE_STATUS]: {}", response_status.as_str());
+    println!("[RESPONSE_URL]: {}", response_url);
     
     // https://docs.rs/querystring/latest/querystring/fn.querify.html
     let base_with_query_url = response_url.clone();
     
+    let mut query_url = "";
+
+
+    // We have to manually get the redirected authorization url for now
+    let mut redirect_auth_url = String::new();
+    let stdin = std::io::stdin();
+    println!("Copy and paste the redirect URL you got here, it should have state and code parameters in the query string: ");
+    stdin.read_line(&mut redirect_auth_url);
+
     // we need to isolate the query string
-    let query_url = base_url_with_query.to_string().replace(format!("{}?", redirect_uri).as_str(), "");
-    
-    println!("\n[QUERY_STRING_URL]: {}", query_url;
-    
-    let query_list = querystring::querify(&query_url);
-    for query in query_list.iter() {
-        println!("\n[QUERY_STRING]: {:?}", query_string);
+    if redirect_auth_url == "" { 
+        println!("[ERROR]: you need to a redirect URL with the proper credentials");
+    } else {
+        match Url::parse(redirect_auth_url.as_str()) {
+            Ok(url) =>{},
+            Err(parse_error) => {
+                panic!("Invalid URL detected. Cannot continue.");
+            }
+        }
+
     }
+    query_url = &redirect_auth_url;
+    // Isolate query string
+    let to_be_replaced = format!("{}?", redirect_uri);
+    let query_url2 = &query_url.replace(to_be_replaced.as_str(), ""); // this does nothing for some reason
+    // note: this returns the replaced string as a new allocation, without modifying the original <-- whoops
+
+    //let len_to_strip = redirect_uri.len()+1;
+    // query_url = &query_url[len_to_strip..];// we'll take a string slice instead
+
+    println!("\n[QUERY_STRING_URL]: {}", &query_url2);
     
+    let query_list = querystring::querify(&query_url2);
     
-    // verify state
-    assert_eq!("","");
-    
-    let response_text_result=response.text().await;
+    // place to store one-time use code
+    let mut code: &str = "";
+    // see: https://en.wikipedia.org/wiki/Query_string
+    // query strings are composed of series of field-value pairs
+    for query in query_list.iter() {
+        println!("\n[QUERY_STRING]: {:?}", query);
+        // parse tuple
+        let (field, mut value) = query;
+        // error check
+        if field == &"error" {
+            println!("[ERR:RESPONSE]: {}",value);
+            return
+        }
+
+        // state check
+        if field == &"state" {
+            assert_eq!(value, &state_id);
+        }
+
+        // save the code if the query was valid
+        if field == &"code" {
+            println!("[OK]: we got a code");
+            // sanitize the value
+            trim_newline(&mut value.to_string());
+            code = value;
+        } else {
+            println!("[ERROR]: missing CODE");
+        }
+    }
+
+    use std::borrow::Borrow;
+    // ERROR
+    let response_text_result=response.text().await; // ERROR
     let response_text = match response_text_result {
         Ok(string) => {
             string
@@ -212,5 +272,94 @@ async fn main(){
         }
     };
 
-    println!("response_text: {}", response_text);
+    // println!("response_text: {}", response_text);
+
+    // ## It's time to get our access token ##
+    println!("[CODE]: {}",code);
+    if code == "" {
+        panic!("[ERROR]: No code. Something's wrong");
+    }
+    // Now you have to send a post request
+    // to this target: https://www.reddit.com/api/v1/access_token
+    // with this POST data:
+    // grant_type=authorization_code&code=CODE&redirect_uri=URI
+    // grant_type=autorization_code, using standard code based flow
+    // code = code you retrieved
+    // redirect_uri = you already have it
+    println!("Sending POST request...");
+    let res2 = client.post("https://www.reddit.com/api/v1/access_token")
+        .body(format!("grant_type={}&code={}&redirect_uri={}","authorization_code", &code, &redirect_uri))
+        .send()
+        .await; // -> Result<Response,Error>
+
+    let response_ok = match res2 {
+        Ok(response) => {
+            Ok(response)
+        },
+        Err(err) => {
+            println!("[ERROR from Response]: {}", err);
+            Err(err)
+        }
+    };
+
+    let response = response_ok.unwrap();
+    let status_code = response.status();
+    println!("[STATUS_CODE]: {}", &status_code.as_str());
+    if status_code.as_u16() == 200 {
+        println!("[OK]: success, you should now have a JSON body to retrieve");
+    } else {
+        panic!("[ERROR]: something went wrong, Cannot continue");
+    }
+    // run: $cargo add reqwests --features json
+    // you'll need it to retrieve the access token
+    /*
+    {
+        "access_token": Your access token,
+        "token_type": "bearer",
+        "expires_in": Unix Epoch Seconds,
+        "scope": A scope string,
+        "refresh_token": Your refresh token
+    }
+     */
+    let json_result = response.json::<Credentials>().await;
+    let json_ok:Result<Credentials, ()> = match json_result {
+        Ok(access_token) => Ok(access_token),
+        Err(err) => {
+            println!("Unable to deserialize into the struct");
+            panic!("{}", format!("error: {}",err));
+        },
+    };
+
+    let credentials=json_ok.unwrap();
+    let access_token=credentials.access_token;
+    println!("[ACCESS_TOKEN]: {}", access_token);
+
+    // You may now make API requests to reddit's servers on behalf of that user, 
+    // by including the following header in your HTTP requests:
+    // Authorization: bearer TOKEN
+    /*
+    let res = client
+        .post(url)
+        .header("Authorization", access_token)
+        .send()
+        .await;
+     */
+}
+
+#[derive(Deserialize)]
+struct Credentials {
+    access_token: String,
+    token_type: String,
+    expires_in: u64,// unix epoch in seconds
+    scope: String,
+    refresh_token: String,
+}
+
+fn trim_newline(s: &mut String) {
+    if s.ends_with('\n') {
+        s.pop();
+        if s.ends_with('\r') {
+            s.pop();
+        }
+    }
 }
