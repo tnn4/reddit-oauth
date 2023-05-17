@@ -1,5 +1,9 @@
 # RSRAW(rust reddit api wrapper)
 
+## Run
+
+`cargo run --release`
+
 # Setup
 
 ## Install dependencies

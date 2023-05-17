@@ -2,24 +2,25 @@
 
 // The #[cfg(test)] annotation on the tests module tells Rust to compile and run the test code only when you run cargo test
 // not when you run `cargo build`
-#[cfg(test)] 
+#[cfg(test)]
+use std::{println as info, println as warn}; // tell tests not to hide output
 mod tests {
     use std::fs;
     use toml;
-    use ace4r::Data;
-    use ace4r::Auth;
+    use rsraw::Data;
+    use rsraw::Auth;
 
     // Test if toml file was read correctly
     #[test]
     fn test_toml(){
-        println!("Hello, world! Time to automate edit of Reddit!");
+        
 
-        let redirect_port = 6666;
-        let USER_AGENT: String;
-        let CLIENT_ID: String;
-        let CLIENT_SECRET: String;
-        let USERNAME: String;
-        let PASSWORD: String;
+        let redirect_port = 7778;
+        let user_agent: String;
+        let client_id: String;
+        let client_secret: String;
+        let username: String;
+        let password: String;
     
         let auth_file_name = "auth-example.toml";
     
@@ -41,24 +42,25 @@ mod tests {
             }
         };
         
-        // Testing
-        let USER_AGENT_T = "windows:roux:v0.1.0 /u/your_user_name";
-        let CLIENT_ID_T = "client id here";
-        let CLIENT_SECRET_T = "client secret here";
-        let USERNAME_T = "your-username";
-        let PASSWORD_T = "your-password";
+        // Testing variables
+        let user_agent_test = "windows:roux:v0.1.0 /u/your_user_name";
+        let client_id_test = "client id here";
+        let client_secret_test = "client secret here";
+        let username_test = "your-username";
+        let password_test = "your-password";
         // Read from file
-        USER_AGENT = data.auth.user_agent.clone();
-        CLIENT_ID = data.auth.client_id.clone();
-        CLIENT_SECRET = data.auth.client_secret.clone();
-        USERNAME = data.auth.username.clone();
-        PASSWORD = data.auth.password.clone();
+        user_agent = data.auth.user_agent.clone();
+        client_id = data.auth.client_id.clone();
+        client_secret = data.auth.client_secret.clone();
+        username = data.auth.username.clone();
+        password = data.auth.password.clone();
     
+        // Do Tests
         println!("[OK] {}", data.auth.user_agent);
-        assert_eq!( USER_AGENT_T ,USER_AGENT);
-        assert_eq!( CLIENT_ID_T , CLIENT_ID);
-        assert_eq!( CLIENT_SECRET_T ,CLIENT_SECRET);
-        assert_eq!( USERNAME_T, USERNAME);
-        assert_eq!( PASSWORD_T, PASSWORD);
+        assert_eq!( user_agent_test ,user_agent);
+        assert_eq!( client_id_test , client_id);
+        assert_eq!( client_secret_test , client_secret_test);
+        assert_eq!( username_test, username);
+        assert_eq!( password_test, password);
     }
 }

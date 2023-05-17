@@ -26,75 +26,78 @@ use nanoid::nanoid;
 const RESPONSE_TYPE: &'static str ="code";
 
 
-struct OAuthURL {
-    client_id: String, // client app you made during registration
-    response_type: String, // must be string code
-    state: String, // Generate a unique random string for each authorization request, use nanoid
-    redirect_uri: String, // http://localhost:<port>/authorize_callback
-    duration: String, // temporary, permanent
-    scope: String, // Space separated list of scope strings
-}
 
-fn get_auth_duration(is_tmp: bool)-> &'static str {
-    if is_tmp {
-        "temporary"
-    } else {
-        "permanent"
-    }
-}
 
-async fn make_request() {
-    let client = reqwest::Client::new();
-        // impl Future<Output= Result<Response,Error>>
-    // Future type Output: the type of value produced on completion
-    let res=client.get("https://reddit.com/r/rust")
-        .send() 
-        .await;
-    let response = match res {
-        Ok(response) => {
-            println!("Got a response");
-            Ok(response)
-        },
-        Err(err) => {
-            println!("[ERROR]: {}", err);
-            Err(err)
-        }
-    };
 
-    let response_status = response.unwrap().status();
-    println!("response_status: {}", response_status.as_str());
-}
 
+// https://github.com/reddit-archive/reddit/wiki/OAuth2
 #[tokio::main]
 async fn main(){
 
-    let id=nanoid!();
+    // ## DATA ## 
 
-    let port=7778;
-    let redirect_uri=format!("http://localhost:{}/authorize_callback",port);
-    let is_tmp=true;
+    let state_id=nanoid!(); // random id
+    let port=7778; // redirect port
+    let redirect_uri=format!("http://localhost:{}/authorize_callback", port);
+    let is_tmp=true; // Indicates whether or not your app needs a permanent token.
+    let auth_file_name = "auth.toml";  // your auth-credentials file location
+    let scope =  String::from(
+        "identity,edit,flair,history,modconfig,modflair,\
+        modlog,modposts,modwiki,mysubreddit,privatemessages,\
+        read,report,save,submit,subscribe,vote,wikiedit,wikiread"
+    );
 
-    let my_oauth_struct = OAuthURL{
+    let my_oauth_struct = rsraw::OAuthURL{
         client_id: "some_id".to_string(),
         response_type: RESPONSE_TYPE.to_string(),
         state: nanoid!(),
         redirect_uri: format!("http://localhost:{}/authorize_callback", port),
         duration: "temporary".to_string(),
-        scope: String::from("identity edit flair history modconfig modflair modlog modposts modwiki mysubreddit privatemessages read report save submit subscribe vote wikiedit wikiread"),
+        scope: scope.clone(),
     };
 
+
+    
+    // ## AUTH FILE PROCESSING ##
+    // Read from ../auth.toml and put info into our struct
+    let auth_toml_as_string = fs::read_to_string("../auth.toml");
+    // Read contents of auth.toml
+    let contents = match fs::read_to_string(auth_file_name) {
+        Ok(c) => c,
+        Err(_) => {
+            eprintln!("[ERROR] reading file `{}`", auth_file_name);
+            std::process::exit(1);
+        }
+    };
+
+    // Process (deserialize) contents of auth file into Data struct
+    let data: rsraw::Data = match toml::from_str(&contents) {
+        Ok(d) => d,
+        Err(_) => {
+            eprintln!("[ERROR] unable to load data from {}", auth_file_name);
+            std::process::exit(1);
+        }
+    };
+    
+    let user_agent =     data.auth.user_agent.clone();
+    let client_id =      data.auth.client_id.clone();
+    let client_secret =  data.auth.client_secret.clone();
+    let username =       data.auth.username.clone();
+    let password =       data.auth.password.clone();
+
     let my_oauth = vec!(
-        ("client_id", "some_id"),
+        ("client_id", client_id.as_str()),
         ("response_type", RESPONSE_TYPE),
-        ("state", &id),
+        ("state", &state_id),
         ("redirect_uri", &redirect_uri),
-        ("duration", get_auth_duration(is_tmp)),
+        ("duration", rsraw::get_auth_duration(is_tmp)),
+        ("scope", &scope.as_str()),
     );
 
     // Build authorization URL
     let reddit_url=String::from("https://www.reddit.com/api/v1/authorize?");
     let query_string=querystring::stringify(my_oauth);
     let final_auth_url=format!("{}{}",reddit_url, query_string);
-    println!("Authorization URL is:{} ", final_auth_url);
+    println!("Your Authorization  URL is:\n{} ", final_auth_url);
 
 }
