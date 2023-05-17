@@ -1,4 +1,4 @@
-# Reddit with Rust
+# RSRAW(rust reddit api wrapper)
 
 # Setup
 
