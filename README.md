@@ -39,6 +39,3 @@ The #[cfg(test)] annotation on the tests module tells Rust to compile and run th
 Troubleshooting
 - error - `error: could not find system library 'openssl' required by the 'openssl-sys' crate`
 - solution: `sudo apt install libssl-dev`
-
-Name:
-rapi comment deleter
