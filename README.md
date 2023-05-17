@@ -1,4 +1,4 @@
-# ace4r( Automated Comment Editor for reddit)
+# Reddit with Rust
 
 # Setup
 
@@ -25,6 +25,8 @@ To use Reddit’s API, you need a unique and descriptive user agent. The recomme
 create an app
 - put your `client id` and `client secret` along with your user agent, username, and password into `auth.toml` 
 
+##
+
 ## Examples
 run examples: `cargo run --example <example>`
 
@@ -34,7 +36,6 @@ run tests:`cargo test`
 The #[cfg(test)] annotation on the tests module tells Rust to compile and run the test code only when you run cargo test, not when you run `cargo build`
 
 - read_toml
--
 
 Troubleshooting
 - error - `error: could not find system library 'openssl' required by the 'openssl-sys' crate`
