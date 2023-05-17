@@ -42,7 +42,7 @@ create an app
 If you put in correct credentials in `auth.toml` at the root of your project you should also get a valid redirect_url:
 
 
-![cargo-run](img/app-example-00.png)
+![parse-redirect](img/parse-redirect-url-00.png)
 
 
 ---
