@@ -1,7 +1,5 @@
 use std::fs;
 
-use std::collections::HashMap;
-
 use toml;
 use querystring::{querify,stringify};
 use nanoid::nanoid;
@@ -25,11 +23,6 @@ use nanoid::nanoid;
 
 const RESPONSE_TYPE: &'static str ="code";
 
-
-
-
-
-
 // https://github.com/reddit-archive/reddit/wiki/OAuth2
 #[tokio::main]
 async fn main(){
@@ -42,12 +35,14 @@ async fn main(){
     let is_tmp=true; // Indicates whether or not your app needs a permanent token.
     let auth_file_name = "auth.toml";  // your auth-credentials file location
     let scope =  String::from(
-        "identity,edit,flair,history,modconfig,modflair,\
-        modlog,modposts,modwiki,mysubreddit,privatemessages,\
-        read,report,save,submit,subscribe,vote,wikiedit,wikiread"
+        "account,edit,flair,history,identity,livemanage,\
+        modconfig,modcontributors,modflair,modlog,modmail,\
+        modnote,modothers,modposts,modself,modwiki,mysubreddits,\
+        privatemessages,read,report,save,structuredstyles,submit,\
+        subscribe,vote,wikiedit,wikiread"
     );
 
-    let my_oauth_struct = rsraw::OAuthURL{
+    let _my_oauth_struct = rsraw::OAuthURL{
         client_id: "some_id".to_string(),
         response_type: RESPONSE_TYPE.to_string(),
         state: nanoid!(),
@@ -60,7 +55,7 @@ async fn main(){
     
     // ## AUTH FILE PROCESSING ##
     // Read from ../auth.toml and put info into our struct
-    let auth_toml_as_string = fs::read_to_string("../auth.toml");
+    let _auth_toml_as_string = fs::read_to_string("../auth.toml");
     // Read contents of auth.toml
     let contents = match fs::read_to_string(auth_file_name) {
         Ok(c) => c,
