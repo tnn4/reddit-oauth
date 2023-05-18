@@ -42,9 +42,9 @@ serializer/deserializer
 
 If you don't want to type all of that: 
 - `cargo add futures tokio nanoid querystring reqwest url base 64 clap roux toml serde serde_derive`
+- `cargo add reqwest --features json`
+- `cargo add clap --features derive`
 
--`cargo add reqwest --features json`
--`cargo add clap --features derive`
 ---
 
 ## Get your app credentials
