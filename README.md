@@ -44,6 +44,9 @@ If you put in correct credentials in `auth.toml` at the root of your project you
 
 ![parse-redirect](img/parse-redirect-url-00.png)
 
+Follow the instructions and if you're successful you'll get an access token:
+
+![access-token](img/successful-access-token-00.png)
 
 ---
 
