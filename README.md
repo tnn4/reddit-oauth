@@ -61,7 +61,7 @@ create an app
 
 ## Run
 
-`cargo run --release`
+`cargo run --release -- --get-auth`
 
 ![cargo-run](img/cargo-run-00.png)
 
