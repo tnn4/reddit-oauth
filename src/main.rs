@@ -9,6 +9,7 @@ use clap::Parser;
 use reqwest::Response;
 use url::{Url, ParseError};
 use serde::Deserialize;
+use base64::{engine::general_purpose, Engine as _};
 
 // ## querystring ##
 // type QueryParam<'a> = (&'a str, &'a str)
@@ -115,13 +116,9 @@ async fn main(){
     // ## Build User agent URL ##
     // IMPORTANT: Make sure to send a user agent with your request
     // <platform>:<app ID>:<version string> (by /u/<reddit username>)
-    let platform = env::consts::OS;
-    let app_id = "test-app-1";
-    let version_string="v0.1.0";
-    let user_string=format!("(by /u/{})", reddit_username);
 
     // https://dtantsur.github.io/rust-openstack/reqwest/struct.ClientBuilder.html#method.user_agent
-    let user_agent=format!("{}:{}:{} {}",platform,app_id,version_string,user_string);
+    let user_agent=get_user_agent(reddit_username);
     println!("\n[USER_AGENT]: {}\n",user_agent);
     // ## Client Configuration 
     
@@ -197,7 +194,7 @@ async fn main(){
     
     let mut query_url = "";
 
-
+    // todo!("figure out how to automate this");
     // We have to manually get the redirected authorization url for now
     let mut redirect_auth_url = String::new();
     let stdin = std::io::stdin();
@@ -206,7 +203,7 @@ async fn main(){
 
     // we need to isolate the query string
     if redirect_auth_url == "" { 
-        println!("[ERROR]: you need to a redirect URL with the proper credentials");
+        println!("[ERROR]: you need a redirect URL with the proper credentials");
     } else {
         match Url::parse(redirect_auth_url.as_str()) {
             Ok(url) =>{},
@@ -222,7 +219,7 @@ async fn main(){
     let query_url2 = &query_url.replace(to_be_replaced.as_str(), ""); // this does nothing for some reason
     // note: this returns the replaced string as a new allocation, without modifying the original <-- whoops
 
-    //let len_to_strip = redirect_uri.len()+1;
+    // let len_to_strip = redirect_uri.len()+1;
     // query_url = &query_url[len_to_strip..];// we'll take a string slice instead
 
     println!("\n[QUERY_STRING_URL]: {}", &query_url2);
@@ -234,7 +231,7 @@ async fn main(){
     // see: https://en.wikipedia.org/wiki/Query_string
     // query strings are composed of series of field-value pairs
     for query in query_list.iter() {
-        println!("\n[QUERY_STRING]: {:?}", query);
+        println!("\n[QUERY]: {:?}", query);
         // parse tuple
         let (field, mut value) = query;
         // error check
@@ -279,16 +276,47 @@ async fn main(){
     if code == "" {
         panic!("[ERROR]: No code. Something's wrong");
     }
+
+    get_access_token(client, code.to_string(), redirect_uri, client_id, client_secret).await;
+
+}
+
+async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: String,
+    client_id: String, client_secret: String) {
     // Now you have to send a post request
     // to this target: https://www.reddit.com/api/v1/access_token
     // with this POST data:
     // grant_type=authorization_code&code=CODE&redirect_uri=URI
-    // grant_type=autorization_code, using standard code based flow
+    //
+    // grant_type= authorization_code, using standard code based flow
     // code = code you retrieved
     // redirect_uri = you already have it
-    println!("Sending POST request...");
-    let res2 = client.post("https://www.reddit.com/api/v1/access_token")
-        .body(format!("grant_type={}&code={}&redirect_uri={}","authorization_code", &code, &redirect_uri))
+    
+    let token_url="https://www.reddit.com/api/v1/access_token";
+    println!("Sending POST request to {}", token_url);
+    
+
+    let post_body=format!("grant_type={}&code={}&redirect_uri={}", "authorization_code", &code, &redirect_uri);
+    
+    todo!("Fix base64 encoding");
+    let credentials = format!("{}:{}",&client_id,&client_secret);
+    let credentials_base64=general_purpose::STANDARD.encode(&credentials); 
+    
+    println!("[BASE64_ENCODED_CREDENTIALS]: {}", credentials_base64);
+    println!("[POST_BODY]: {}", post_body);
+
+    let res2 = client.post(token_url)
+    // see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication
+    // The Authorization and Proxy-Authorization request headers contain the credentials to authenticate a user agent with a (proxy) server. 
+    // Authorization: <type> <credentials>
+    // user     client_id
+    // password client_secret
+    // If the user agent wishes to send the userid "Aladdin" and password
+    // "open sesame", it would use the following header field:
+    // see: https://www.geeksforgeeks.org/http-headers-authorization/#
+    // Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+        .header("Authorization", "Basic ".to_owned() + &credentials_base64)
+        .body(post_body)
         .send()
         .await; // -> Result<Response,Error>
 
@@ -305,10 +333,15 @@ async fn main(){
     let response = response_ok.unwrap();
     let status_code = response.status();
     println!("[STATUS_CODE]: {}", &status_code.as_str());
+    
     if status_code.as_u16() == 200 {
         println!("[OK]: success, you should now have a JSON body to retrieve");
+    } else if status_code.as_u16() == 401 {
+        panic!("[ERROR]: invalid credentials were supplied");
+    } else if status_code.as_16() == 400 {
+        panic!("[ERROR]: Bad Request");
     } else {
-        panic!("[ERROR]: something went wrong, Cannot continue");
+        panic!("[ERROR]: something went wrong, Cannot continue.");
     }
     // run: $cargo add reqwests --features json
     // you'll need it to retrieve the access token
@@ -321,6 +354,7 @@ async fn main(){
         "refresh_token": Your refresh token
     }
      */
+
     let json_result = response.json::<Credentials>().await;
     let json_ok:Result<Credentials, ()> = match json_result {
         Ok(access_token) => Ok(access_token),
@@ -344,6 +378,19 @@ async fn main(){
         .send()
         .await;
      */
+}
+
+fn get_user_agent(_reddit_username: String) -> String {
+    // IMPORTANT: Make sure to send a user agent with your request
+    // <platform>:<app ID>:<version string> (by /u/<reddit username>)
+    let platform = env::consts::OS;
+    let app_id = "test-app-1";
+    let version_string="v0.1.0";
+    let user_string=format!("(by /u/{})", _reddit_username);
+
+    // https://dtantsur.github.io/rust-openstack/reqwest/struct.ClientBuilder.html#method.user_agent
+    let user_agent=format!("{}:{}:{} {}",platform,app_id,version_string,user_string);
+    user_agent
 }
 
 #[derive(Deserialize)]
