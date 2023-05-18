@@ -270,7 +270,7 @@ async fn main(){
     };
 
     // println!("response_text: {}", response_text);
-    // todo!("FIX THE FIX_FRAGMENT");
+    // 
     // ## It's time to get our access token ##
     /*
     https://www.reddit.com/r/redditdev/comments/xdud2v/bad_request_400_when_requesting_reddit_oauth2/
@@ -280,18 +280,19 @@ async fn main(){
     to the end of the redirect URI in the Location header in response to a POST request to /api/v1/authorize. 
     This should be transparent as browsers and url parsers should drop the fragment when redirecting.
     
+    FIXED
      */
     println!("[CODE]: {}",code);
     if code == "" {
         panic!("[ERROR]: No code. Something's wrong");
     }
 
-    get_access_token(client, code.to_string(), redirect_uri, client_id, client_secret).await;
+    let credentials: Credentials = get_credentials(client, code.to_string(), redirect_uri, client_id, client_secret).await;
 
 }
 
-async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: String,
-    client_id: String, client_secret: String) {
+async fn get_credentials(client: reqwest::Client, code: String, redirect_uri: String,
+    client_id: String, client_secret: String) -> Credentials {
     // Now you have to send a post request
     // to this target: https://www.reddit.com/api/v1/access_token
     // with this POST data:
@@ -343,10 +344,15 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
         }
     };
 
+
     let response = response_ok.unwrap();
+
     let status_code = response.status();
+    let response_headers = response.headers();
     println!("[STATUS_CODE]: {}", status_code.as_str());
-    
+    println!("[RESPONSE_HEADERS]: {:?}", response_headers);
+
+    /*
     let response_text_result = response.text().await;
     let response_text = match response_text_result {
         Ok(text) => {
@@ -356,7 +362,7 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
         Err(err) => "error".to_string(),
     };
     //println!("[RESPONSE_TEXT]: {}", response_text);
-
+    */
     if status_code.as_u16() == 200 {
         println!("[OK]: success, you should now have a JSON body to retrieve");
     } else if status_code.as_u16() == 401 {
@@ -366,6 +372,7 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
     } else {
         panic!("[ERROR]: something went wrong, Cannot continue.");
     }
+
     // run: $cargo add reqwests --features json
     // you'll need it to retrieve the access token
     /*
@@ -378,25 +385,34 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
     }
      */
     
-    
-    /*  USE JSON 
+    // Deserialize the json
     let json_result = response.json::<Credentials>().await;
     let json_ok:Result<Credentials, ()> = match json_result {
-        Ok(access_token) => Ok(access_token),
+        Ok(credentials) => Ok(credentials),
         Err(err) => {
-            println!("Unable to deserialize into the struct");
+            println!("Unable to deserialize JSON into the struct");
             panic!("{}", format!("error: {}",err));
         },
     };
 
     let credentials=json_ok.unwrap();
-    let access_token=credentials.access_token;
-    println!("[ACCESS_TOKEN]: {}", access_token);
-    */
+    let access_token=&credentials.access_token;
+    let token_type=&credentials.token_type;
+    let expires_in=&credentials.expires_in;
+    let scope=&credentials.scope;
+    let refresh_token_maybe=&credentials.refresh_token;
+    if let None = refresh_token_maybe {
+        println!("No refresh token found");
+    } else {
+        println!("Found a refresh token.");
+    }
 
-    // You may now make API requests to reddit's servers on behalf of that user, 
-    // by including the following header in your HTTP requests:
-    // Authorization: bearer TOKEN
+    println!("\nACCESS_TOKEN]: {}", access_token);
+    println!("[EXPIRES_IN]: {}", expires_in);
+    
+    println!("You may now make API requests to reddit's servers on behalf of the user the token is for"); 
+    println!("by including the following header in your HTTP requests to endpoints listedat https://www.reddit.com/dev/api/:");
+    println!("Authorization: bearer ACCESS_TOKEN");
     /*
     let res = client
         .post(url)
@@ -404,6 +420,7 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
         .send()
         .await;
      */
+     credentials
 }
 
 fn get_user_agent(_reddit_username: String) -> String {
@@ -425,7 +442,7 @@ struct Credentials {
     token_type: String,
     expires_in: u64,// unix epoch in seconds
     scope: String,
-    refresh_token: String,
+    refresh_token: Option<String>,
 }
 
 fn trim_newline(s: &mut String) {
@@ -436,3 +453,4 @@ fn trim_newline(s: &mut String) {
         }
     }
 }
+
