@@ -10,6 +10,27 @@ Required:
 Rust reddit api wrapper
 - `cargo add roux`
 
+async
+- `cargo add futures`
+- `cargo add tokio`
+
+random strings
+- `cargo add nanoid`
+
+parse url querystrings
+- `cargo add querystring`
+
+make http requests
+- `cargo add reqwest`
+- `cargo add reqwest --features json`
+- `cargo add url`
+
+base64
+- `cargo add base64`
+
+parse cli arguments
+- `cargo add clap`
+
 toml parser
 - `cargo add toml`
 
@@ -17,8 +38,13 @@ serializer/deserializer
 - `cargo add serde`
 - `cargo add serde_derive`
 
-If you don't want to type all of that: `cargo add roux toml serde serde_derive`
 
+
+If you don't want to type all of that: 
+- `cargo add futures tokio nanoid querystring reqwest url base 64 clap roux toml serde serde_derive`
+
+-`cargo add reqwest --features json`
+-`cargo add clap --features derive`
 ---
 
 ## Get your app credentials
@@ -48,7 +74,11 @@ Follow the instructions and if you're successful you'll get an access token:
 
 ![access-token](img/successful-access-token-00.png)
 
+You can now use the access token however you want.
+
 ---
+
+## Use the following commands to test
 
 ## Examples
 run examples: `cargo run --example <example>`
