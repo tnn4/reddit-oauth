@@ -270,7 +270,7 @@ async fn main(){
     };
 
     // println!("response_text: {}", response_text);
-    todo!("FIX THE FIX_FRAGMENT");
+    // todo!("FIX THE FIX_FRAGMENT");
     // ## It's time to get our access token ##
     /*
     https://www.reddit.com/r/redditdev/comments/xdud2v/bad_request_400_when_requesting_reddit_oauth2/
@@ -303,9 +303,12 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
     
     let token_url="https://www.reddit.com/api/v1/access_token";
     println!("Sending POST request to {}", token_url);
-    
 
-    let post_body=format!("grant_type={}&code={}&redirect_uri={}", "authorization_code", &code, &redirect_uri);
+    // s[0..len] is length of entire string
+    let code_len = &code.len();
+    let fixed_code=&code[..(code_len-3)];
+
+    let post_body=format!("grant_type={}&code={}&redirect_uri={}", "authorization_code", fixed_code, &redirect_uri);
     
     //todo!("Fix base64 encoding");
     let credentials = format!("{}:{}",&client_id,&client_secret);
