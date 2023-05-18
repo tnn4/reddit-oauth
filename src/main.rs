@@ -270,8 +270,17 @@ async fn main(){
     };
 
     // println!("response_text: {}", response_text);
-
+    todo!("FIX THE FIX_FRAGMENT");
     // ## It's time to get our access token ##
+    /*
+    https://www.reddit.com/r/redditdev/comments/xdud2v/bad_request_400_when_requesting_reddit_oauth2/
+    Redirect URI Fix Fragments
+
+    The last, but likely least impactful, change we're implementing is adding a "fix fragment" #_ 
+    to the end of the redirect URI in the Location header in response to a POST request to /api/v1/authorize. 
+    This should be transparent as browsers and url parsers should drop the fragment when redirecting.
+    
+     */
     println!("[CODE]: {}",code);
     if code == "" {
         panic!("[ERROR]: No code. Something's wrong");
@@ -298,7 +307,7 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
 
     let post_body=format!("grant_type={}&code={}&redirect_uri={}", "authorization_code", &code, &redirect_uri);
     
-    todo!("Fix base64 encoding");
+    //todo!("Fix base64 encoding");
     let credentials = format!("{}:{}",&client_id,&client_secret);
     let credentials_base64=general_purpose::STANDARD.encode(&credentials); 
     
@@ -315,7 +324,8 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
     // "open sesame", it would use the following header field:
     // see: https://www.geeksforgeeks.org/http-headers-authorization/#
     // Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
-        .header("Authorization", "Basic ".to_owned() + &credentials_base64)
+        .header(reqwest::header::AUTHORIZATION, "Basic ".to_owned() + &credentials_base64)
+        .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(post_body)
         .send()
         .await; // -> Result<Response,Error>
@@ -332,13 +342,23 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
 
     let response = response_ok.unwrap();
     let status_code = response.status();
-    println!("[STATUS_CODE]: {}", &status_code.as_str());
+    println!("[STATUS_CODE]: {}", status_code.as_str());
     
+    let response_text_result = response.text().await;
+    let response_text = match response_text_result {
+        Ok(text) => {
+            println!("[RESPONSE_TEXT]: {}", text);
+            text
+        },
+        Err(err) => "error".to_string(),
+    };
+    //println!("[RESPONSE_TEXT]: {}", response_text);
+
     if status_code.as_u16() == 200 {
         println!("[OK]: success, you should now have a JSON body to retrieve");
     } else if status_code.as_u16() == 401 {
-        panic!("[ERROR]: invalid credentials were supplied");
-    } else if status_code.as_16() == 400 {
+        panic!("[ERROR]: Invalid credentials were supplied");
+    } else if status_code.as_u16() == 400 {
         panic!("[ERROR]: Bad Request");
     } else {
         panic!("[ERROR]: something went wrong, Cannot continue.");
@@ -354,7 +374,9 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
         "refresh_token": Your refresh token
     }
      */
-
+    
+    
+    /*  USE JSON 
     let json_result = response.json::<Credentials>().await;
     let json_ok:Result<Credentials, ()> = match json_result {
         Ok(access_token) => Ok(access_token),
@@ -367,6 +389,7 @@ async fn get_access_token(client: reqwest::Client, code: String, redirect_uri: S
     let credentials=json_ok.unwrap();
     let access_token=credentials.access_token;
     println!("[ACCESS_TOKEN]: {}", access_token);
+    */
 
     // You may now make API requests to reddit's servers on behalf of that user, 
     // by including the following header in your HTTP requests:
