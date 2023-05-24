@@ -1,12 +1,14 @@
-# RSRAW(rust reddit api wrapper)
+# Reddit stuff
 
 Required:
 - Rust
 - reddit account
 
-# Setup
+## Get Reddit Access Token
 
-## Install dependencies
+## Setup
+
+### Install dependencies
 Rust reddit api wrapper
 - `cargo add roux`
 
@@ -47,7 +49,7 @@ If you don't want to type all of that:
 
 ---
 
-## Get your app credentials
+### Get your app credentials
 Login to your reddit account:
 preferences > apps
 ![developer application](img/app-example-00.png)
@@ -56,10 +58,10 @@ To use Reddit’s API, you need a unique and descriptive user agent. The recomme
 
 create an app
 
-## Fill out `auth.toml`
+### Fill out `auth.toml`
 - put your `client id` and `client secret` along with your user agent, username, and password into `auth.toml` 
 
-## Run
+### Run
 
 `cargo run --release -- --get-auth`
 
@@ -77,6 +79,8 @@ Follow the instructions and if you're successful you'll get an access token:
 You can now use the access token however you want.
 
 ---
+
+# Testing Examples
 
 ## Use the following commands to test
 
