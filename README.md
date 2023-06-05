@@ -1,4 +1,4 @@
-# Reddit stuff
+# Reddit OAuth
 
 Required:
 - Rust
